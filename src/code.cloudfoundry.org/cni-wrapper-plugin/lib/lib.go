@@ -176,3 +176,30 @@ func (c *PluginController) DelIPMasq(ip, noMasqueradeCIDRRange, deviceName strin
 
 	return nil
 }
+
+// AddDNSNoMasq exempts the container's DNS traffic to the given (link-local)
+// DNS servers from masquerading, so the DNS server sees the container's real
+// source IP. Rules are inserted ahead of the masquerade rule in POSTROUTING.
+func (c *PluginController) AddDNSNoMasq(containerIP string, dnsServers []string) error {
+	for _, dnsServer := range dnsServers {
+		for _, protocol := range []string{"tcp", "udp"} {
+			rule := rules.NewDNSNoMasqueradeRule(containerIP, dnsServer, protocol)
+			if err := c.IPTables.BulkInsert("nat", "POSTROUTING", 1, rule); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+func (c *PluginController) DelDNSNoMasq(containerIP string, dnsServers []string) error {
+	for _, dnsServer := range dnsServers {
+		for _, protocol := range []string{"tcp", "udp"} {
+			rule := rules.NewDNSNoMasqueradeRule(containerIP, dnsServer, protocol)
+			if err := c.IPTables.Delete("nat", "POSTROUTING", rule); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}

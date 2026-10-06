@@ -284,6 +284,9 @@ func cmdAdd(args *skel.CmdArgs) error {
 		if cleanupErr := masquerader.DelIPMasq(); cleanupErr != nil {
 			fmt.Fprintf(os.Stderr, "during cleanup: removing IP masq: %s", cleanupErr)
 		}
+		if cleanupErr := pluginController.DelDNSNoMasq(containerIPv4.String(), localDNSServers); cleanupErr != nil {
+			fmt.Fprintf(os.Stderr, "during cleanup: removing dns no-masq: %s", cleanupErr)
+		}
 
 		return storeErr
 	}
@@ -346,6 +349,10 @@ func cmdAdd(args *skel.CmdArgs) error {
 	err = masquerader.AddIPMasq()
 	if err != nil {
 		return fmt.Errorf("error setting up default ip masq rule: %s", err)
+	}
+
+	if err := pluginController.AddDNSNoMasq(containerIPv4.String(), localDNSServers); err != nil {
+		return fmt.Errorf("error setting up dns no-masquerade rule: %s", err)
 	}
 
 	resultActual.DNS.Nameservers = cfg.DNSServers
@@ -549,6 +556,12 @@ func cmdDel(args *skel.CmdArgs) error {
 	err = masquerader.DelIPMasq()
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "removing IP masq: %s", err)
+	}
+
+	if localDNSServers, dnsErr := getLocalDNSServers(cfg.DNSServers); dnsErr != nil {
+		fmt.Fprintf(os.Stderr, "parsing dns servers: %s", dnsErr)
+	} else if err := pluginController.DelDNSNoMasq(container.IP, localDNSServers); err != nil {
+		fmt.Fprintf(os.Stderr, "removing dns no-masq: %s", err)
 	}
 
 	// Error is intentionally not returned: DEL must be idempotent, and iptables cleanup above

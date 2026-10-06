@@ -124,6 +124,16 @@ func NewDefaultEgressRule(localSubnet, noMasqueradeCIDRRange, deviceName string)
 	return ipTablesRule
 }
 
+func NewDNSNoMasqueradeRule(containerIP, dnsServer, protocol string) IPTablesRule {
+	return IPTablesRule{
+		"--source", containerIP,
+		"--destination", dnsServer,
+		"-p", protocol,
+		"--destination-port", "53",
+		"--jump", "RETURN",
+	}
+}
+
 func NewLogRule(rule IPTablesRule, name string) IPTablesRule {
 	return IPTablesRule(append(
 		rule, "-m", "limit", "--limit", "2/min",
